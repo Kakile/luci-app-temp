@@ -54,6 +54,11 @@ document.head.append(E('style', {'type': 'text/css'},
 .temp-status-hide-item:hover {
 	opacity: 1.0;
 }
+/* 修正右侧按钮垂直居中 */
+.td.right {
+	text-align: right;
+	vertical-align: middle;
+}
 `));
 
 return baseclass.extend({
@@ -171,16 +176,15 @@ return baseclass.extend({
 								'class'    : 'tr' + rowStyle,
 								'data-path': j.path ,
 							}, [
-								E('td', { 'class': 'td left', 'data-title': _('Sensor') },
+								E('td', { 'class': 'td left', 'title': _('Sensor') },
 									(tpointsString.length > 0) ?
 									`<span style="cursor:help; border-bottom:1px dotted" data-tooltip="${tpointsString}">${name}</span>` :
 									name
 								),
-								E('td', { 'class': 'td left', 'data-title': _('Temperature') },
+								E('td', { 'class': 'td left', 'title': _('Temperature') },
 									(temp === undefined || temp === null) ? '-' : temp + ' °C'
 								),
-								// 最右侧去掉 data-title，只保留图标和 title
-								E('td', { 'class': 'td right' },
+								E('td', { 'class': 'td right', 'title': _('Hide') },
 									E('span', {
 										'class': 'temp-status-hide-item',
 										'title': _('Hide'),
@@ -223,13 +227,28 @@ return baseclass.extend({
 		if (!this.section) return;
 
 		let btn = this.section.querySelector('.temp-status-unhide-all');
-		if (!btn) return;
 
 		if (this.hiddenItems.size > 0) {
-			btn.style.display = 'inline-block';
-			btn.textContent = _('Show hidden sensors') + ' (' + this.hiddenItems.size + ')';
+			if (!btn) {
+				let container = E('div', { 'style': 'margin-bottom:1em; padding:0 4px;' },
+					E('span', {
+						'class': 'temp-status-unhide-all',
+						'click': () => this.unhideAllItems(),
+					}, [
+						_('Show hidden sensors'),
+						' (',
+						E('span', { 'id': 'temp-status-hnum' }, this.hiddenItems.size),
+						')',
+					])
+				);
+
+				this.section.insertBefore(container, this.tempTable);
+			} else {
+				let hnum = btn.querySelector('#temp-status-hnum');
+				if (hnum) hnum.textContent = this.hiddenItems.size;
+			}
 		} else {
-			btn.style.display = 'none';
+			if (btn) btn.parentNode.remove();
 		}
 	},
 
@@ -257,11 +276,11 @@ return baseclass.extend({
 			return;
 		}
 
+		// 创建并持久化 section 容器引用
 		if (!this.section) {
 			this.section = E('div', { 'class': 'cbi-section' }, [ this.tempTable ]);
 		}
-
 		this.makeTempTableContent();
 		return this.section;
 	}
-});
+});	

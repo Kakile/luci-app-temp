@@ -269,3 +269,8 @@ return baseclass.extend({
 				this.tempTable
 			]);
 		}
+
+		this.makeTempTableContent();
+		return this.section;
+	}
+});

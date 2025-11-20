@@ -1,4 +1,4 @@
-name: Build luci-app-temp-status
+name: Build luci-app-temp-status (OpenWrt 24.10 multi-arch)
 
 on:
   workflow_dispatch:
@@ -58,7 +58,17 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           cp -r ../luci-app-temp-status package/luci-app-temp-status
+          # 生成默认配置
           make defconfig
+          # 指定架构（这里用 matrix.arch）
+          echo "CONFIG_TARGET_${{ matrix.arch }}=y" >> .config
+          make defconfig
+
+      - name: Build toolchain first
+        working-directory: openwrt-src
+        run: |
+          make toolchain/install -j$(nproc)
+          make package/libs/toolchain/compile -j$(nproc)
 
       - name: Build luci-app-temp-status
         working-directory: openwrt-src

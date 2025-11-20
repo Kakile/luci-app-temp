@@ -1,4 +1,4 @@
-name: Build luci-app-temp-status mediatek filogic
+name: Build-Packages mediatek filogic
 
 on:
   workflow_dispatch:

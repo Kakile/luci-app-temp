@@ -270,6 +270,7 @@ return baseclass.extend({
 		this.makeTempTableContent();
 
 		return E('div', { 'class': 'cbi-section' }, [
+			(this.hiddenItems.size > 0) ? 
 			E('div',
 				{ 'style': 'margin-bottom:1em; padding:0 4px;' },
 				E('span', {
@@ -282,7 +283,7 @@ return baseclass.extend({
 					E('span', { 'id': 'temp-status-hnum' }, this.hiddenItems.size),
 					')',
 				])
-			),
+			) : null,
 			this.tempTable,
 		]);
 	},

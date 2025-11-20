@@ -33,7 +33,7 @@ document.head.append(E('style', {'type': 'text/css'},
 .temp-status-unhide-all {
 	display: inline-block;
 	cursor: pointer;
-	margin: 2px !important;
+	margin-left: 0.5em;
 	padding: 2px 4px;
 	border: 1px dotted;
 	border-radius: 4px;
@@ -220,8 +220,19 @@ return baseclass.extend({
 	updateHiddenButton() {
 		if (!this.section) return;
 
+		// 找到自动生成的标题 h2/h3
+		let header = this.section.querySelector('h2,h3');
+		if (!header) return;
+
 		let btn = this.section.querySelector('.temp-status-unhide-all');
-		if (!btn) return;
+		if (!btn) {
+			btn = E('span', {
+				'class': 'temp-status-unhide-all',
+				'style': 'display:none;',
+				'click': () => this.unhideAllItems(),
+			});
+			header.appendChild(btn);
+		}
 
 		if (this.hiddenItems.size > 0) {
 			btn.style.display = 'inline-block';
@@ -256,18 +267,7 @@ return baseclass.extend({
 		}
 
 		if (!this.section) {
-			this.section = E('div', { 'class': 'cbi-section' }, [
-				E('h3', {}, [
-					_('Temperature'),
-					' ',
-					E('span', {
-						'class': 'temp-status-unhide-all',
-						'style': 'display:none;',
-						'click': () => this.unhideAllItems(),
-					}, _('Show hidden sensors'))
-				]),
-				this.tempTable
-			]);
+			this.section = E('div', { 'class': 'cbi-section' }, [ this.tempTable ]);
 		}
 
 		this.makeTempTableContent();

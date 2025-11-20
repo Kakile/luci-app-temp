@@ -1,4 +1,4 @@
-name: Build luci-app-temp-status use SDK
+name: Build-Packages use SDK
 
 on:
   workflow_dispatch:

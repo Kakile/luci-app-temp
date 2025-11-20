@@ -226,7 +226,8 @@ return baseclass.extend({
 					)
 				)
 			);
-		};
+		}
+		this.updateHiddenButton();
 	},
 
 	hideItem(path) {

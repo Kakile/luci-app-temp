@@ -1,0 +1,74 @@
+name: Build luci-app-temp-status
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.arch }} build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch:
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9
+          - arm_cortex-a9_vfpv3-d16
+          - arm_cortex-a9_neon
+          - arm_cortex-a15_neon-vfpv4
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_cortex-a76
+          - aarch64_generic
+          - mips_24kc
+          - mips_4kec
+          - mips_mips32
+          - mipsel_24kc
+          - mipsel_24kc_24kf
+          - mipsel_74kc
+          - mipsel_mips32
+          - mips64_octeonplus
+          - i386_pentium4
+          - x86_64
+
+    steps:
+      - name: Checkout workflow repo
+        uses: actions/checkout@v4
+
+      - name: Checkout luci-app-temp-status
+        uses: actions/checkout@v4
+        with:
+          repository: Kakile/luci-app-temp-status
+          path: luci-app-temp-status
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git-core libncurses5-dev gawk gettext libssl-dev xsltproc unzip zstd
+
+      - name: Clone OpenWrt source (24.10 branch)
+        run: |
+          git clone https://github.com/openwrt/openwrt.git -b openwrt-24.10 openwrt-src
+
+      - name: Prepare build environment
+        working-directory: openwrt-src
+        run: |
+          ./scripts/feeds update -a
+          ./scripts/feeds install -a
+          cp -r ../luci-app-temp-status package/luci-app-temp-status
+          make defconfig
+
+      - name: Build luci-app-temp-status
+        working-directory: openwrt-src
+        run: |
+          make package/luci-app-temp-status/compile V=s
+
+      - name: Upload artifacts (main + i18n)
+        uses: actions/upload-artifact@v4
+        with:
+          name: luci-app-temp-status_${{ matrix.arch }}-openwrt-24.10
+          path: |
+            openwrt-src/bin/packages/*/*/*luci-app-temp-status*.ipk
+            openwrt-src/bin/packages/*/*/*luci-i18n-*.ipk

@@ -18,7 +18,9 @@ document.head.append(E('style', {'type': 'text/css'},
 	background-color: var(--app-temp-status-hot-color) !important;
 	color: var(--app-temp-status-font-color) !important;
 }
-.temp-status-hot .td,
+.temp-status-hot .td {
+	color: var(--app-temp-status-font-color) !important;
+}
 .temp-status-hot td {
 	color: var(--app-temp-status-font-color) !important;
 }
@@ -26,14 +28,16 @@ document.head.append(E('style', {'type': 'text/css'},
 	background-color: var(--app-temp-status-overheat-color) !important;
 	color: var(--app-temp-status-font-color) !important;
 }
-.temp-status-overheat .td,
+.temp-status-overheat .td {
+	color: var(--app-temp-status-font-color) !important;
+}
 .temp-status-overheat td {
 	color: var(--app-temp-status-font-color) !important;
 }
 .temp-status-unhide-all {
 	display: inline-block;
 	cursor: pointer;
-	margin-left: 0.5em;
+	margin: 2px !important;
 	padding: 2px 4px;
 	border: 1px dotted;
 	border-radius: 4px;
@@ -62,15 +66,20 @@ return baseclass.extend({
 	viewName    : 'temp_status',
 
 	tempHot     : 95,
+
 	tempOverheat: 105,
 
 	sensorsData : null,
+
 	tempData    : null,
+
 	sensorsPath : [],
 
 	hiddenItems : new Set(),
 
+	// 持久容器引用，避免 querySelector 初次渲染找不到节点
 	section     : null,
+
 	tempTable   : E('table', { 'class': 'table' }),
 
 	callSensors : rpc.declare({
@@ -122,12 +131,17 @@ return baseclass.extend({
 
 				for (let i of Object.values(v)) {
 					let sensor = i.title || i.item;
-					if (i.sources === undefined) continue;
+
+					if (i.sources === undefined) {
+						continue;
+					}
 
 					i.sources.sort(this.sortFunc);
 
 					for (let j of i.sources) {
-						if (this.hiddenItems.has(j.path)) continue;
+						if (this.hiddenItems.has(j.path)) {
+							continue;
+						}
 
 						let temp = this.tempData[j.path];
 						let name = (j.label !== undefined) ? sensor + " / " + j.label :
@@ -171,15 +185,24 @@ return baseclass.extend({
 								'class'    : 'tr' + rowStyle,
 								'data-path': j.path ,
 							}, [
-								E('td', { 'class': 'td left', 'data-title': _('Sensor') },
+								E('td', {
+										'class'     : 'td left',
+										'data-title': _('Sensor')
+									},
 									(tpointsString.length > 0) ?
 									`<span style="cursor:help; border-bottom:1px dotted" data-tooltip="${tpointsString}">${name}</span>` :
 									name
 								),
-								E('td', { 'class': 'td left', 'data-title': _('Temperature') },
+								E('td', {
+										'class'     : 'td left',
+										'data-title': _('Temperature')
+									},
 									(temp === undefined || temp === null) ? '-' : temp + ' °C'
 								),
-								E('td', { 'class': 'td right', 'data-title': _('Hide') },
+								E('td', {
+										'class'     : 'td right',
+										'data-title': _('Hide')
+									},
 									E('span', {
 										'class': 'temp-status-hide-item',
 										'click': () => this.hideItem(j.path),
@@ -202,6 +225,7 @@ return baseclass.extend({
 			);
 		}
 
+		// 每次刷新表格时，顺便刷新按钮（相对 this.section）
 		this.updateHiddenButton();
 	},
 
@@ -218,27 +242,39 @@ return baseclass.extend({
 	},
 
 	updateHiddenButton() {
+		// 确保 section 已创建
 		if (!this.section) return;
 
-		// 找到自动生成的标题 h2/h3
-		let header = this.section.querySelector('h2,h3');
-		if (!header) return;
-
 		let btn = this.section.querySelector('.temp-status-unhide-all');
-		if (!btn) {
-			btn = E('span', {
-				'class': 'temp-status-unhide-all',
-				'style': 'display:none;',
-				'click': () => this.unhideAllItems(),
-			});
-			header.appendChild(btn);
-		}
 
 		if (this.hiddenItems.size > 0) {
-			btn.style.display = 'inline-block';
-			btn.textContent = _('Show hidden sensors') + ' (' + this.hiddenItems.size + ')';
+			if (!btn) {
+				// 在表格之前插入按钮容器，保证位置稳定
+				let container = E('div', { 'style': 'margin-bottom:1em; padding:0 4px;' },
+					E('span', {
+						'class': 'temp-status-unhide-all',
+						'href': 'javascript:void(0)',
+						'click': () => this.unhideAllItems(),
+					}, [
+						_('Show hidden sensors'),
+						' (',
+						E('span', { 'id': 'temp-status-hnum' }, this.hiddenItems.size),
+						')',
+					])
+				);
+
+				// 如果 tempTable 已在 section 中，则插入到它之前；否则 append
+				if (this.tempTable.parentNode === this.section) {
+					this.section.insertBefore(container, this.tempTable);
+				} else {
+					this.section.appendChild(container);
+				}
+			} else {
+				let hnum = btn.querySelector('#temp-status-hnum');
+				if (hnum) hnum.textContent = this.hiddenItems.size;
+			}
 		} else {
-			btn.style.display = 'none';
+			if (btn) btn.parentNode.remove(); // 移除按钮容器
 		}
 	},
 
@@ -266,11 +302,15 @@ return baseclass.extend({
 			return;
 		}
 
+		// 创建并持久化 section 容器引用
 		if (!this.section) {
 			this.section = E('div', { 'class': 'cbi-section' }, [ this.tempTable ]);
 		}
 
+		// 渲染表格（内部会调用 updateHiddenButton）
 		this.makeTempTableContent();
+
+		// 返回持久容器
 		return this.section;
 	}
 });

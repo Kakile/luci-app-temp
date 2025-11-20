@@ -1,0 +1,61 @@
+name: Build luci-app-temp-status (OpenWrt 24.10.4 aarch64)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      OPENWRT_TAG: "v24.10.4"                # OpenWrt 源码 tag（或分支）
+      TARGET: "aarch64_cortex-a53"           # 你给定的 target
+    steps:
+      - name: Checkout this repo (workflow)
+        uses: actions/checkout@v4
+
+      - name: Checkout luci-app-temp-status repo
+        uses: actions/checkout@v4
+        with:
+          repository: gSpotx2f/luci-app-temp-status
+          path: luci-app-temp-status
+
+      - name: Install build dependencies (host)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential git-core libncurses5-dev gawk gettext libssl-dev xsltproc \
+            unzip python3 python3-distutils python3-setuptools subversion
+
+      - name: Clone OpenWrt source
+        run: |
+          git clone --depth 1 --branch ${OPENWRT_TAG} https://github.com/openwrt/openwrt openwrt-src
+          cd openwrt-src
+          git status --porcelain || true
+
+      - name: Copy package into OpenWrt tree
+        run: |
+          cp -r luci-app-temp-status openwrt-src/package/luci-app-temp-status
+          ls -la openwrt-src/package/luci-app-temp-status
+
+      - name: Update feeds and install
+        working-directory: openwrt-src
+        run: |
+          ./scripts/feeds update -a || true
+          ./scripts/feeds install -a || true
+
+      - name: Prepare default config for target (optional)
+        working-directory: openwrt-src
+        run: |
+          # 这里不做完整 .config 配置，仅用于编译单个包
+          # 若需要交叉编译完整固件，请准备合适的 .config
+          make defconfig || true
+
+      - name: Compile luci-app-temp-status package
+        working-directory: openwrt-src
+        run: |
+          # 只编译指定包（会触发 host 工具构建，通常会生成 i18n 的 .lmo）
+          make package/luci-app-temp-status/compile V=s
+
+      - name: Collect built ipk files
+        working-directory: openwrt-src
+        run: |
+          find bin -type f -name "*luci-app-temp-status*.ipk" -print || true

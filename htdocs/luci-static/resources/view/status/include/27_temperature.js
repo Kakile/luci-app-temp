@@ -273,7 +273,7 @@ return baseclass.extend({
 		} else {
 			if (btn) btn.remove();
 			}
-	}
+	},
 
 	load() {
 		this.restoreSettingsFromLocalStorage();

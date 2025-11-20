@@ -201,12 +201,10 @@ return baseclass.extend({
 								),
 								E('td', {
 										'class'     : 'td right',
-										'data-title': _('Hide'),
-										'title'     : _('Hide'),
+										'data-title': _('Hide')
 									},
 									E('span', {
 										'class': 'temp-status-hide-item',
-										'title': _('Hide'),
 										'click': () => this.hideItem(j.path),
 									}, '&#935;'),
 								),
@@ -251,8 +249,8 @@ return baseclass.extend({
 
 		if (this.hiddenItems.size > 0) {
 			if (!btn) {
-				// 在表格之前插入按钮容器，保证位置稳定
-				let container = E('div', { 'style': 'margin-bottom:1em; padding:0 4px;' },
+				// 创建按钮容器（将插入到表格之后）
+				let container = E('div', { 'style': 'margin-top:1em; padding:0 4px;' },
 					E('span', {
 						'class': 'temp-status-unhide-all',
 						'href': 'javascript:void(0)',
@@ -265,9 +263,9 @@ return baseclass.extend({
 					])
 				);
 
-				// 如果 tempTable 已在 section 中，则插入到它之前；否则 append
+				// 插在表格之后（等效 insertAfter）
 				if (this.tempTable.parentNode === this.section) {
-					this.section.insertBefore(container, this.tempTable);
+					this.section.insertBefore(container, this.tempTable.nextSibling);
 				} else {
 					this.section.appendChild(container);
 				}

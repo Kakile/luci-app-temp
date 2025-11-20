@@ -1,4 +1,4 @@
-name: Build luci-app-temp-status (OpenWrt 24.10 multi-arch)
+name: Build luci-app-temp-status (OpenWrt 24.10 multi-target)
 
 on:
   workflow_dispatch:
@@ -10,28 +10,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch:
-          - arm_cortex-a5_vfpv4
-          - arm_cortex-a7_neon-vfpv4
-          - arm_cortex-a8_vfpv3
-          - arm_cortex-a9
-          - arm_cortex-a9_vfpv3-d16
-          - arm_cortex-a9_neon
-          - arm_cortex-a15_neon-vfpv4
-          - aarch64_cortex-a53
-          - aarch64_cortex-a72
-          - aarch64_cortex-a76
-          - aarch64_generic
-          - mips_24kc
-          - mips_4kec
-          - mips_mips32
-          - mipsel_24kc
-          - mipsel_24kc_24kf
-          - mipsel_74kc
-          - mipsel_mips32
-          - mips64_octeonplus
-          - i386_pentium4
-          - x86_64
+        include:
+          - arch: x86_64
+            target: x86
+            subtarget: 64
+          - arch: mips_24kc
+            target: ath79
+            subtarget: generic
+          - arch: aarch64_cortex-a53
+            target: mediatek
+            subtarget: filogic
 
     steps:
       - name: Checkout workflow repo
@@ -58,24 +46,21 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
           cp -r ../luci-app-temp-status package/luci-app-temp-status
-          # 生成默认配置
-          make defconfig
-          # 指定架构（这里用 matrix.arch）
-          echo "CONFIG_TARGET_${{ matrix.arch }}=y" >> .config
+          echo "CONFIG_TARGET_${{ matrix.target }}=y" >> .config
+          echo "CONFIG_TARGET_${{ matrix.target }}_${{ matrix.subtarget }}=y" >> .config
           make defconfig
 
-      - name: Build toolchain first
+      - name: Build toolchain
         working-directory: openwrt-src
         run: |
           make toolchain/install -j$(nproc)
-          make package/libs/toolchain/compile -j$(nproc)
 
       - name: Build luci-app-temp-status
         working-directory: openwrt-src
         run: |
           make package/luci-app-temp-status/compile V=s
 
-      - name: Upload artifacts (main + i18n)
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: luci-app-temp-status_${{ matrix.arch }}-openwrt-24.10

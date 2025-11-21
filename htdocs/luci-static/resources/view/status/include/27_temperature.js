@@ -18,26 +18,14 @@ document.head.append(E('style', {'type': 'text/css'},
 	background-color: var(--app-temp-status-hot-color) !important;
 	color: var(--app-temp-status-font-color) !important;
 }
-.temp-status-hot .td {
-	color: var(--app-temp-status-font-color) !important;
-}
-.temp-status-hot td {
-	color: var(--app-temp-status-font-color) !important;
-}
 .temp-status-overheat {
 	background-color: var(--app-temp-status-overheat-color) !important;
-	color: var(--app-temp-status-font-color) !important;
-}
-.temp-status-overheat .td {
-	color: var(--app-temp-status-font-color) !important;
-}
-.temp-status-overheat td {
 	color: var(--app-temp-status-font-color) !important;
 }
 .temp-status-unhide-all {
 	display: inline-block;
 	cursor: pointer;
-	margin: 2px !important;
+	margin-left: 0.5em;
 	padding: 2px 4px;
 	border: 1px dotted;
 	border-radius: 4px;
@@ -58,6 +46,12 @@ document.head.append(E('style', {'type': 'text/css'},
 .temp-status-hide-item:hover {
 	opacity: 1.0;
 }
+/* 改用 Flex 布局保证右侧按钮居中对齐 */
+.td.right {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+}
 `));
 
 return baseclass.extend({
@@ -66,20 +60,15 @@ return baseclass.extend({
 	viewName    : 'temp_status',
 
 	tempHot     : 95,
-
 	tempOverheat: 105,
 
 	sensorsData : null,
-
 	tempData    : null,
-
 	sensorsPath : [],
 
 	hiddenItems : new Set(),
 
-	// 持久容器引用，避免 querySelector 初次渲染找不到节点
 	section     : null,
-
 	tempTable   : E('table', { 'class': 'table' }),
 
 	callSensors : rpc.declare({
@@ -119,9 +108,19 @@ return baseclass.extend({
 		this.tempTable.innerHTML = '';
 		this.tempTable.append(
 			E('tr', { 'class': 'tr table-titles' }, [
-				E('th', { 'class': 'th left', 'width': '33%' }, _('Sensor')),
+				E('th', { 'class': 'th left', 'width': '33%' },
+					E('div', { 'style': 'display:flex; align-items:center; justify-content:space-between;' }, [
+						E('span', {}, _('Sensor')),
+						(this.hiddenItems.size > 0) ?
+							E('span', {
+								'class': 'temp-status-unhide-all',
+								'click': () => this.unhideAllItems(),
+							}, _('Show hidden sensors') + ' (' + this.hiddenItems.size + ')')
+						: null
+					])
+				),
 				E('th', { 'class': 'th left' }, _('Temperature')),
-				E('th', { 'class': 'th right', 'width': '1%' }, ' '),
+				E('th', { 'class': 'th right', 'width': '1%' }, ' ')
 			])
 		);
 
@@ -131,17 +130,12 @@ return baseclass.extend({
 
 				for (let i of Object.values(v)) {
 					let sensor = i.title || i.item;
-
-					if (i.sources === undefined) {
-						continue;
-					}
+					if (i.sources === undefined) continue;
 
 					i.sources.sort(this.sortFunc);
 
 					for (let j of i.sources) {
-						if (this.hiddenItems.has(j.path)) {
-							continue;
-						}
+						if (this.hiddenItems.has(j.path)) continue;
 
 						let temp = this.tempData[j.path];
 						let name = (j.label !== undefined) ? sensor + " / " + j.label :
@@ -185,25 +179,11 @@ return baseclass.extend({
 								'class'    : 'tr' + rowStyle,
 								'data-path': j.path ,
 							}, [
-								E('td', {
-										'class'     : 'td left',
-										'data-title': _('Sensor')
-									},
-									(tpointsString.length > 0) ?
-									`<span style="cursor:help; border-bottom:1px dotted" data-tooltip="${tpointsString}">${name}</span>` :
-									name
-								),
-								E('td', {
-										'class'     : 'td left',
-										'data-title': _('Temperature')
-									},
+								E('td', { 'class': 'td left', 'title': _('Sensor') }, name),
+								E('td', { 'class': 'td left', 'title': _('Temperature') },
 									(temp === undefined || temp === null) ? '-' : temp + ' °C'
 								),
-								E('td', {
-										'class'     : 'td right',
-										'data-title': _('Hide'),
-										'title'     : _('Hide'),
-									},
+								E('td', { 'class': 'td right', 'title': _('Hide') },
 									E('span', {
 										'class': 'temp-status-hide-item',
 										'title': _('Hide'),
@@ -220,15 +200,12 @@ return baseclass.extend({
 		if (this.tempTable.childNodes.length == 1) {
 			this.tempTable.append(
 				E('tr', { 'class': 'tr placeholder' },
-					E('td', { 'class': 'td' },
+					E('td', { 'class': 'td', 'colspan': 3 },
 						E('em', {}, _('No temperature sensors available'))
 					)
 				)
 			);
 		}
-
-		// 每次刷新表格时，顺便刷新按钮（相对 this.section）
-		this.updateHiddenButton();
 	},
 
 	hideItem(path) {
@@ -243,74 +220,38 @@ return baseclass.extend({
 		this.makeTempTableContent();
 	},
 
-	updateHiddenButton() {
-		// 确保 section 已创建
-		if (!this.section) return;
-
-		let btn = this.section.querySelector('.temp-status-unhide-all');
-
-		if (this.hiddenItems.size > 0) {
-			if (!btn) {
-				// 在表格之前插入按钮容器，保证位置稳定
-				let container = E('div', { 'style': 'margin-bottom:1em; padding:0 4px;' },
-					E('span', {
-						'class': 'temp-status-unhide-all',
-						'href': 'javascript:void(0)',
-						'click': () => this.unhideAllItems(),
-					}, [
-						_('Show hidden sensors'),
-						' (',
-						E('span', { 'id': 'temp-status-hnum' }, this.hiddenItems.size),
-						')',
-					])
-				);
-
-				// 如果 tempTable 已在 section 中，则插入到它之前；否则 append
-				if (this.tempTable.parentNode === this.section) {
-					this.section.insertBefore(container, this.tempTable);
-				} else {
-					this.section.appendChild(container);
-				}
-			} else {
-				let hnum = btn.querySelector('#temp-status-hnum');
-				if (hnum) hnum.textContent = this.hiddenItems.size;
-			}
-		} else {
-			if (btn) btn.parentNode.remove(); // 移除按钮容器
-		}
-	},
-
 	load() {
-		this.restoreSettingsFromLocalStorage();
-		if (this.sensorsData) {
-			return (this.sensorsPath.length > 0) ?
-				L.resolveDefault(this.callTempData(this.sensorsPath), null) :
-				new Promise(r => r(null));
-		} else {
-			return L.resolveDefault(this.callSensors(), null);
-		}
+		return Promise.all([
+			this.callSensors(),
+		]).then(([sensors]) => {
+			this.sensorsData = sensors;
+			this.sensorsPath = [];
+
+			for (let [k, v] of Object.entries(sensors)) {
+				for (let i of Object.values(v)) {
+					if (i.sources === undefined) continue;
+					for (let j of i.sources) {
+						this.sensorsPath.push(j.path);
+					}
+				}
+			}
+
+			return this.callTempData(this.sensorsPath);
+		}).then((tempData) => {
+			this.tempData = tempData;
+		});
 	},
 
-	render(data) {
-		if (data) {
-			if (!this.sensorsData) {
-				this.sensorsData = data.sensors;
-				this.sensorsPath = data.temp && new Array(...Object.keys(data.temp));
-			}
-			this.tempData = data.temp;
-		}
+	render() {
+		this.restoreSettingsFromLocalStorage();
 
-		if (!this.sensorsData || !this.tempData) {
-			return;
-		}
+		this.section = E('div', { 'class': 'cbi-section' }, [
+			E('h3', {}, _('Temperature status')),
+			this.tempTable
+		]);
 
-		// 创建并持久化 section 容器引用
-		if (!this.section) {
-			this.section = E('div', { 'class': 'cbi-section' }, [ this.tempTable ]);
-		}
-
-		// 渲染表格（内部会调用 updateHiddenButton）
 		this.makeTempTableContent();
+
 		return this.section;
 	}
 });

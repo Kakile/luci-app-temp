@@ -28,8 +28,7 @@ jobs:
             branch: openwrt-23.05
 
     steps:
-      - name: checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: prepare package dir
         run: |
@@ -48,8 +47,7 @@ jobs:
           NO_REFRESH_CHECK: true
           NO_DOWNLOAD: true
 
-      - name: upload artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.arch }}-${{ matrix.branch }}
           path: |
@@ -59,35 +57,33 @@ jobs:
             bin/packages/${{ matrix.arch }}/tempstatus/luci-i18n-temp-status-*.apk
           if-no-files-found: warn
 
-release:
-  needs: build
-  runs-on: ubuntu-latest
-  steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Download all artifacts
-      uses: actions/download-artifact@v4
-      with:
-        path: ./artifacts
+      - uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
 
-    - name: Flatten artifact directories
-      run: |
-        mkdir upload
-        for dir in ./artifacts/*; do
-          base=$(basename "$dir")
-          mv "$dir" "upload/$base"
-        done
-        ls -R upload
+      - name: Flatten artifact directories
+        run: |
+          mkdir upload
+          for dir in ./artifacts/*; do
+            base=$(basename "$dir")
+            mv "$dir" "upload/$base"
+          done
+          ls -R upload
 
-    - name: Create GitHub Release
-      uses: softprops/action-gh-release@v2
-      with:
-        tag_name: v${{ github.run_number }}
-        name: "luci-app-temp-status ${{ github.run_number }}"
-        body: |
-          自动发布 Build-Packages Multi-Arch 的构建产物。
-          按架构分类存放，方便下载。
-        files: upload/**/*
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          name: "luci-app-temp-status ${{ github.run_number }}"
+          body: |
+            自动发布 Build-Packages Multi-Arch 的构建产物。
+            按架构分类存放，方便下载。
+          files: upload/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
